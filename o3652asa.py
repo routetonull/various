@@ -1,10 +1,13 @@
-
 '''
 sourcefile from Microsoft:
  https://support.content.office.net/en-us/static/O365IPAddresses.xml
 
-hot to extract network-object list to create a group on ASA:
-  python o3652asa.py | grep object | gawk "{print \"network-object object \"$3}"
+OLD how to extract network-object list to create a group on ASA:
+OLD python o3652asa.py | grep object | gawk "{print \"network-object object \"$3}"
+
+NEW 20171106
+create object-group after creating all the objects
+update ACL in2out with object-group
 
 '''
 
@@ -12,19 +15,21 @@ import xml.etree.ElementTree as etree
 import re
 
 
-def asaIpNetworkObject(ip,net):
-	print "object network O365_"+ip
+def asaIpNetworkObject(ip,net,productname):
+	objname = productname+"_"+ip
+	print "object network "+objname
 	print "subnet "+net
-	return 1
+	return objname
 
-def asaFqdnNetworkObject(fqdn):
+def asaFqdnNetworkObject(fqdn,productname):
 	#fqdn = fqdn.replace ("*","")
 	fqdn = re.sub("^\*\.","",fqdn)
 	fqdn = re.sub("^.*\*","",fqdn)
 	fqdn = re.sub("^\.","",fqdn)
-	print "object network O365_"+fqdn
+	objname = productname+"_"+fqdn
+	print "object network "+objname
 	print "fqdn "+fqdn
-	return 1
+	return objname
 
 def slash2sub(ip):	
 	sub = ip
@@ -96,31 +101,61 @@ def slash2sub(ip):
 		sub = ip+" 255.255.255.255"
 	return sub
 
+def main():
 
-tree = etree.parse('O365IPAddresses.xml') 
+	tree = etree.parse('O365IPAddresses.xml') 
 
-root = tree.getroot()
+	root = tree.getroot()
 
-e = tree.findall('product')
+	e = tree.findall('product')
 
-for i in e:
-	#print i.attrib
-	if i.attrib['name'] == "o365":
-		#print "o365"
-		for type in i:
-			#print type.attrib
-			if type.attrib['type'] == "IPv4":
-				#print type
-				for ip in type:
-					#print slash2sub(ip.text)
-					asaIpNetworkObject(ip.text.replace("/","_"),slash2sub(ip.text))
-					#print ip.text
-			#if type.attrib['type'] == "IPv6":
-			#	print type
-			#	for ipv6 in type:
-			#		print ipv6.text
-			if type.attrib['type'] == "URL":
-				#print type
-				for url in type:
-					#fqdn = str(url.text)					
-					asaFqdnNetworkObject(url.text)
+	productname = "o365"
+
+	'''
+	"o365", Office 365 portal and shared, Office 365 authentication and identity
+	"LYO", Skype for Business Online
+	"ProPlus", Office 365 ProPlus
+	"SPO", SharePoint Online
+	"WAC", Office Online
+	"EX-Fed", Exchange Federation
+	"OfficeiPad", Office for iPad
+	"EXO", Exchange Online
+	"Yammer", Yammer
+	"OfficeMobile", Office Mobile
+	"RCA", Office 365 remote analyzer tools
+	"EOP", Exchange Online Protection (EOP)
+	'''
+
+	objlist = []
+
+	for i in e:
+		#print i.attrib
+		if i.attrib['name'] == productname:
+			#print "o365"
+			for type in i:
+				#print type.attrib
+				if type.attrib['type'] == "IPv4":
+					#print type
+					for ip in type:
+						#print slash2sub(ip.text)
+						objlist.append(asaIpNetworkObject(ip.text.replace("/","_"),slash2sub(ip.text),productname))
+						#print ip.text
+				#if type.attrib['type'] == "IPv6":
+				#	print type
+				#	for ipv6 in type:
+				#		print ipv6.text
+				if type.attrib['type'] == "URL":
+					#print type
+					for url in type:
+						#fqdn = str(url.text)					
+						objlist.append(asaFqdnNetworkObject(url.text,productname))
+	
+	print "object-group network OBJ_GROUP_"+productname
+	for obj in objlist:
+		print "network-object object "+obj
+	
+	# ADD TO IN2OUT ACCESS LIST
+	print "exit"
+	print "access-list in2out extended permit ip any object-group OBJ_GROUP_"+productname
+
+main()
