@@ -1,3 +1,7 @@
+'''
+read this for details
+https://www.ifconfig.it/hugo/post/2017-08-07-python-hp-to-cisco-switchport-migration/
+'''
 from netmiko import ConnectHandler
 import getpass
 swip = raw_input('IP ADDRESS: ')
