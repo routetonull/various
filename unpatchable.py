@@ -4,6 +4,7 @@ from datetime import datetime,timedelta
 from datetime import date
 import time
 import sys
+import argparse
 
 # some usefuls OIDs
 ifAlias = '1.3.6.1.2.1.31.1.1.1.18'
@@ -15,18 +16,30 @@ sysUpTime = '1.3.6.1.2.1.1.3.0'
 ifDescr = '1.3.6.1.2.1.2.2.1.2'
 ifstatus={'1':'up','2':'down','3':'testing'}
 
+description = """Lists device interfaces, current operstatus and lastchange days"""
+
 def lastchange2date(uptime,lastchange):
-    diff = int(uptime)-int(lastchange)
+    if uptime >= lastchange:
+        diff = int(uptime)-int(lastchange)
+    else:
+        diff = int(uptime)
+
     d0 = datetime.fromtimestamp(time.time()-diff/100)
     d1 = datetime.now()
     delta = d1 - d0
     return str(delta.days)
+        
 
 def main():
+
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("-H", "--hostname", help="IP Address / Hostname to check [REQUIRED]",type=str, required=True)
+    parser.add_argument("-c", "--community",help="SNMP Community (default 'public')",type=str,default='public')
+
+    args = parser.parse_args()
+    hostname = args.hostname
+    comm = args.community
     
-    hostname = raw_input('IP ADDRESS:\t')
-    comm = raw_input('COMMUNITY:\t')
-     
     session = Session(hostname=hostname, community=comm, version=2)
     try:
         item = session.walk(ifName)
@@ -38,17 +51,17 @@ def main():
     print "\nUPTIME\t"+str(timedelta(seconds=(int(uptime)/100)))+"\n"
     # port names to include or ignore to filter useless values
     include= ('ethernet')
-    ignore = ('vlan','VLAN','VLAN-','Trk','lo','oobm','Po','Nu','Gi/--Uncontrolled','Gi/--Controlled','Te/--Uncontrolled','Te/--Controlled')
+    ignore = ('Vl','vlan','VLAN','VLAN-','Trk','lo','oobm','Po','Nu','Gi/--Uncontrolled','Gi/--Controlled','Te/--Uncontrolled','Te/--Controlled')
     for value in item:
         # remove all digits from port names before filtering
         result = ''.join(i for i in value.value if not i.isdigit())
         if (result in include) or (result not in ignore):
             ifname = value.value
             # id defines the interface, will be appended to following snmp get
-            id = value.oid[value.oid.rfind('.'):]
+            id = value.oid_index
             #descr = session.get(ifAlias+id)
-            opstatus = ifstatus[session.get(ifOperStatus+id).value]        
-            lastchangedate = lastchange2date(uptime,session.get(ifLastChange+id).value)
+            opstatus = ifstatus[session.get(ifOperStatus+'.'+id).value]
+            lastchangedate = lastchange2date(uptime,session.get(ifLastChange+'.'+id).value)
             print str(ifname)+"\tSTATUS "+opstatus+"\tLAST CHANGE SINCE DAYS\t"+lastchangedate
 
 main()
