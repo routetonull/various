@@ -31,6 +31,10 @@ python o2652asa.py
 Copy&paste the output on ASA CLI, create an object group, allow http and https from inside network to internet. Office 365 should work.
 
 Remember to check if the XML from Microsoft is updated from time to time (or even better, automate it).
+
+UPDATE
+Check this for the same feature for AWS servers: https://github.com/andr01dt/aws2asa
+
 # provision2ios.py
 
 Read this blog post for details
