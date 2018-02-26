@@ -51,7 +51,7 @@ def main():
     print "\nUPTIME\t"+str(timedelta(seconds=(int(uptime)/100)))+"\n"
     # port names to include or ignore to filter useless values
     include= ('ethernet')
-    ignore = ('Vl','vlan','VLAN','VLAN-','Trk','lo','oobm','Po','Nu','Gi/--Uncontrolled','Gi/--Controlled','Te/--Uncontrolled','Te/--Controlled')
+    ignore = ('StackSub-St-','StackPort','Vl','vlan','VLAN','VLAN-','Trk','lo','oobm','Po','Nu','Gi/--Uncontrolled','Gi/--Controlled','Te/--Uncontrolled','Te/--Controlled')
     for value in item:
         # remove all digits from port names before filtering
         result = ''.join(i for i in value.value if not i.isdigit())
@@ -59,7 +59,8 @@ def main():
             ifname = value.value
             # id defines the interface, will be appended to following snmp get
             id = value.oid_index
-            #descr = session.get(ifAlias+id)
+            if not id:
+                id = value.oid.split(".")[-1]
             opstatus = ifstatus[session.get(ifOperStatus+'.'+id).value]
             lastchangedate = lastchange2date(uptime,session.get(ifLastChange+'.'+id).value)
             print str(ifname)+"\tSTATUS "+opstatus+"\tLAST CHANGE SINCE DAYS\t"+lastchangedate
