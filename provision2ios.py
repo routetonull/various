@@ -1,15 +1,18 @@
+#!/usr/bin/python
 '''
 read this for details
 https://www.ifconfig.it/hugo/post/2017-08-07-python-hp-to-cisco-switchport-migration/
 '''
 from netmiko import ConnectHandler
 import getpass
-swip = raw_input('IP ADDRESS: ')
+portlistFile = raw_input('PORT MAPPING FILE: ')
+outputFile = raw_input('OUTPUT FILE: ')
+swip = raw_input('SWITCH IP ADDRESS: ')
 swun = raw_input('SWITCH USERNAME: ')
-swpass = getpass.getpass()
+swpass = getpass.getpass(prompt='SWITCH PASSWORD: ')
 connection = ConnectHandler(ip=swip, device_type='hp_procurve', username=swun, password=swpass)
-cisco_output = open("cisco_output.txt", 'w')
-portlist = open("portlist.total.txt", 'r')
+cisco_output = open(outputFile, 'w')
+portlist = open(portlistFile, 'r')
 for port in portlist:
 	porthp = port.strip().split()[0]
 	portcisco = port.strip().split()[1]
@@ -38,4 +41,5 @@ for port in portlist:
 			fields = line.strip().split(":")
 			cisco_output.write("description "+fields[1]+"\n")
 cisco_output.close()
+portlist.close()
 connection.disconnect()
